@@ -1,10 +1,20 @@
 import warnings
 from typing import Sequence, Union
 
-import pandas as pd
-import yfinance
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
-import ffn
+try:
+    import yfinance
+except ImportError:
+    yfinance = None
+
+try:
+    import ffn
+except ImportError:
+    ffn = None
 
 from . import utils
 
@@ -48,58 +58,7 @@ def get(
         * kwargs: passed to provider
 
     """
-
-    if provider is None:
-        provider = DEFAULT_PROVIDER
-
-    tickers = utils.parse_arg(tickers)
-
-    data = {}
-    for ticker in tickers:
-        t = ticker
-        f = None
-
-        # check for field
-        bits = ticker.split(ticker_field_sep, 1)
-        if len(bits) == 2:
-            t = bits[0]
-            f = bits[1]
-
-        # call provider - check if supports memoization
-        if hasattr(provider, "mcache"):
-            data[ticker] = provider(ticker=t, field=f, mrefresh=mrefresh, **kwargs)
-        else:
-            data[ticker] = provider(ticker=t, field=f, **kwargs)
-
-        data[ticker] = data[ticker][~data[ticker].index.duplicated(keep="last")]
-        if isinstance(data[ticker], pd.DataFrame):
-            # newer yfinance returns as dataframe,
-            # convert to series
-            data[ticker] = data[ticker][data[ticker].columns[0]]
-
-    df = pd.DataFrame(data)
-
-    # ensure same order as provided
-    df = df[tickers]
-
-    if existing is not None:
-        df = ffn.merge(existing, df)
-
-    if common_dates:
-        df = df.dropna()
-
-    if forward_fill:
-        df = df.fillna(method="ffill")
-
-    if column_names:
-        cnames = utils.parse_arg(column_names)
-        if len(cnames) != len(df.columns):
-            raise ValueError("column_names must be of same length as tickers")
-        df.columns = cnames
-    elif clean_tickers:
-        df.columns = map(utils.clean_ticker, df.columns)
-
-    return df
+    pass
 
 
 def web(ticker: str, field=None, start=None, end=None, mrefresh=False, source="yahoo"):
@@ -107,29 +66,12 @@ def web(ticker: str, field=None, start=None, end=None, mrefresh=False, source="y
     Data provider wrapper around pandas.io.data provider. Provides
     memoization.
     """
-    if source == "yahoo":
-        warnings.warn("web function is deprecated, as , use yf() instead")
-        return yf(ticker, field, start, end, mrefresh)
-    raise Exception("""pandas_datareader data readers are unmaintained and mostly broken, If you
-                    still want them, go import the datareader directly from that library.
-                    https://github.com/pydata/pandas-datareader/issues/977
-                    """)
+    pass
 
 
 @utils.memoize
 def yf(ticker: str, field, start=None, end=None, mrefresh=False) -> Union[pd.Series, pd.DataFrame]:
-    if field is None:
-        field = "Adj Close"
-
-    tmp = yfinance.download(ticker, auto_adjust=False, start=start, end=end)
-
-    if tmp is None:
-        raise ValueError("failed to retrieve data for %s:%s" % (ticker, field))
-
-    if field:
-        return tmp[field]
-    else:
-        return tmp
+    pass
 
 
 @utils.memoize
@@ -137,24 +79,7 @@ def csv(ticker: str, path="data.csv", field="", mrefresh=False, **kwargs) -> pd.
     """
     Data provider wrapper around pandas' read_csv. Provides memoization.
     """
-    # set defaults if not specified
-    if "index_col" not in kwargs:
-        kwargs["index_col"] = 0
-    if "parse_dates" not in kwargs:
-        kwargs["parse_dates"] = True
-
-    # read in dataframe from csv file
-    df = pd.read_csv(path, **kwargs)
-
-    tf = ticker
-    if field != "" and field is not None:
-        tf = "%s:%s" % (tf, field)
-
-    # check that required column exists
-    if tf not in df:
-        raise ValueError("Ticker(field) not present in csv file!")
-
-    return df[tf]
+    pass
 
 
 DEFAULT_PROVIDER = yf
